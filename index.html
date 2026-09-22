@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>أسعار المواد</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Tahoma, Arial, sans-serif;
+            background: #f4f6f9;
+            color: #222;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0d6efd, #084298);
+            color: white;
+            padding: 35px 20px 70px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0 0 10px;
+            font-size: 32px;
+        }
+
+        .header p {
+            margin: 0;
+            opacity: .9;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: -40px auto 40px;
+            padding: 0 15px;
+        }
+
+        .search-box {
+            background: white;
+            padding: 20px;
+            border-radius: 18px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.10);
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 22px;
+            color: #777;
+        }
+
+        #search {
+            width: 100%;
+            height: 58px;
+            border: 2px solid #e3e7ed;
+            border-radius: 14px;
+            padding: 0 55px 0 20px;
+            font-size: 18px;
+            outline: none;
+            transition: .2s;
+        }
+
+        #search:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 4px rgba(13,110,253,.10);
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 22px 5px 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .results {
+            display: grid;
+            gap: 14px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 18px rgba(0,0,0,.07);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            transition: .2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 24px rgba(0,0,0,.11);
+        }
+
+        .item-info {
+            min-width: 0;
+        }
+
+        .item-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .group {
+            display: inline-block;
+            background: #eef4ff;
+            color: #0d6efd;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .price {
+            background: #198754;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .empty {
+            background: white;
+            padding: 45px 20px;
+            border-radius: 16px;
+            text-align: center;
+            color: #777;
+            box-shadow: 0 4px 18px rgba(0,0,0,.06);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #777;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 600px) {
+
+            .header {
+                padding: 28px 15px 65px;
+            }
+
+            .header h1 {
+                font-size: 26px;
+            }
+
+            .container {
+                margin-top: -35px;
+            }
+
+            .card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .price {
+                text-align: center;
+            }
+
+            .item-name {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>أسعار المواد</h1>
+        <p>ابحث عن المادة لمعرفة السعر الحالي</p>
+    </div>
+
+    <div class="container">
+
+        <div class="search-box">
+
+            <div class="search-wrapper">
+
+                <span class="search-icon">🔍</span>
+
+                <input
+                    type="text"
+                    id="search"
+                    placeholder="اكتب اسم المادة..."
+                    autocomplete="off"
+                >
+
+            </div>
+
+        </div>
+
+        <div class="info">
+            <span id="resultCount">جاري تحميل البيانات...</span>
+        </div>
+
+        <div id="results">
+            <div class="loading">
+                جاري تحميل الأسعار...
+            </div>
+        </div>
+
+        <div class="footer">
+            @SAFSOFT - 2026
+        </div>
+
+    </div>
+
+
+<script>
+
+    // ==========================================
+    // إعدادات Google Sheet
+    // ==========================================
+
+    const SHEET_ID =
+        "1g-yiQ50DSDFXRkd18X6bK-qaJQJIa1hncgz9KBe6Oxs";
+
+    const SHEET_NAME = "Sheet1";
+
+
+    // ==========================================
+    // بيانات المواد
+    // ==========================================
+
+    let materials = [];
+
+
+    // ==========================================
+    // تحميل البيانات من Google Sheet
+    // ==========================================
+
+    async function loadData() {
+
+        const url =
+            `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq` +
+            `?sheet=${encodeURIComponent(SHEET_NAME)}` +
+            `&tqx=out:json`;
+
+        try {
+
+            const response = await fetch(url);
+
+            const text = await response.text();
+
+            // Google ترجع JSON داخل callback
+            const start = text.indexOf("{");
+            const end = text.lastIndexOf("}");
+
+            const jsonText = text.substring(start, end + 1);
+
+            const data = JSON.parse(jsonText);
+
+            const rows = data.table.rows;
+
+            materials = [];
+
+            rows.forEach(row => {
+
+                const cells = row.c || [];
+
+                const id =
+                    cells[0]?.v ?? "";
+
+                const group =
+                    cells[1]?.v ?? "";
+
+                const item =
+                    cells[2]?.v ?? "";
+
+                const price =
+                    cells[3]?.v ?? "";
+
+                if (item !== "") {
+
+                    materials.push({
+                        id: id,
+                        group: group,
+                        item: String(item),
+                        price: price
+                    });
+
+                }
+
+            });
+
+
+            document.getElementById("resultCount").textContent =
+                `عدد المواد: ${materials.length}`;
+
+            renderResults(materials);
+
+        }
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("results").innerHTML = `
+                <div class="empty">
+                    <div style="font-size:40px;">⚠️</div>
+
+                    <h3>تعذر تحميل الأسعار</h3>
+
+                    <p>
+                        تأكد أن Google Sheet متاح للعامة
+                        وأن المشاركة مضبوطة على:
+                    </p>
+
+                    <strong>
+                        Anyone with the link → Viewer
+                    </strong>
+                </div>
+            `;
+
+            document.getElementById("resultCount").textContent =
+                "حدث خطأ في تحميل البيانات";
+        }
+    }
+
+
+    // ==========================================
+    // عرض النتائج
+    // ==========================================
+
+    function renderResults(data) {
+
+        const results =
+            document.getElementById("results");
+
+        if (data.length === 0) {
+
+            results.innerHTML = `
+                <div class="empty">
+                    لا توجد مواد لعرضها
+                </div>
+            `;
+
+            return;
+        }
+
+
+        results.innerHTML = data.map(material => {
+
+            return `
+                <div class="card">
+
+                    <div class="item-info">
+
+                        <div class="item-name">
+                            ${escapeHtml(material.item)}
+                        </div>
+
+                        <span class="group">
+                            ${escapeHtml(material.group)}
+                        </span>
+
+                    </div>
+
+                    <div class="price">
+                        ${formatPrice(material.price)}
+                    </div>
+
+                </div>
+            `;
+
+        }).join("");
+    }
+
+
+    // ==========================================
+    // البحث
+    // ==========================================
+
+    document
+        .getElementById("search")
+        .addEventListener("input", function () {
+
+            const searchText =
+                this.value
+                    .trim()
+                    .toLowerCase();
+
+
+            if (searchText === "") {
+
+                renderResults(materials);
+
+                document.getElementById("resultCount").textContent =
+                    `عدد المواد: ${materials.length}`;
+
+                return;
+            }
+
+
+            const filtered =
+                materials.filter(material =>
+                    material.item
+                        .toLowerCase()
+                        .includes(searchText)
+                );
+
+
+            renderResults(filtered);
+
+
+            document.getElementById("resultCount").textContent =
+                `تم العثور على ${filtered.length} مادة`;
+        });
+
+
+    // ==========================================
+    // تنسيق السعر
+    // ==========================================
+
+    function formatPrice(price) {
+
+        if (price === "" || price === null) {
+            return "-";
+        }
+
+        const number =
+            Number(String(price).replace(/,/g, ""));
+
+        if (!isNaN(number)) {
+
+            return number.toLocaleString("en-US") + " IQD";
+
+        }
+
+        return escapeHtml(price);
+    }
+
+
+    // ==========================================
+    // حماية HTML
+    // ==========================================
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+
+    // ==========================================
+    // تشغيل الموقع
+    // ==========================================
+
+    loadData();
+
+</script>
+
+</body>
+</html>
